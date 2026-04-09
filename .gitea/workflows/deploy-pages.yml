@@ -1,0 +1,17 @@
+name: Deploy Pages
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'www/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to Pages
+        uses: https://codeberg.org/Codeberg/pages-action@v1
+        with:
+          directory: www
+          token: ${{ secrets.PAGES_TOKEN }}

@@ -1,0 +1,57 @@
+{
+  "name": "autorepairiq-pro",
+  "version": "1.0.0",
+  "description": "AutoRepairIQ Pro — AI damage scan + repair estimation + shop management + finance",
+  "main": "electron/main.js",
+  "author": "Christopher Cadger <cadger808@codeberg.org>",
+  "license": "Apache-2.0",
+  "scripts": {
+    "serve": "python3 -m http.server 8080 -d www",
+    "cap:sync": "npx cap copy && npx cap sync",
+    "cap:android": "npm run cap:sync && npx cap open android",
+    "electron": "electron .",
+    "electron:dev": "NODE_ENV=development electron .",
+    "electron:build": "electron-builder --linux",
+    "electron:dist": "electron-builder --linux AppImage rpm"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.1.0",
+    "@capacitor/camera": "^8.0.1",
+    "@capacitor/cli": "^8.1.0",
+    "@capacitor/core": "^8.1.0",
+    "@capacitor/geolocation": "^8.0.1",
+    "@capacitor/app": "^8.0.0"
+  },
+  "devDependencies": {
+    "electron": "^35.7.5",
+    "electron-builder": "^26.8.2"
+  },
+  "overrides": {
+    "minimatch": ">=10.2.3",
+    "tar": ">=7.5.11",
+    "picomatch": ">=4.0.2",
+    "brace-expansion": ">=2.0.1"
+  },
+  "build": {
+    "appId": "com.autorepairiq.pro",
+    "productName": "AutoRepairIQ Pro",
+    "copyright": "Copyright © 2026 Christopher Cadger",
+    "directories": {
+      "output": "dist-electron",
+      "buildResources": "www/icons"
+    },
+    "files": [
+      "www/**",
+      "electron/**",
+      "!node_modules/**",
+      "!android/**",
+      "!backend/**",
+      "!dist-electron/**"
+    ],
+    "linux": {
+      "target": ["AppImage", "rpm"],
+      "category": "Utility",
+      "icon": "www/icons/icon-512.png"
+    }
+  }
+}

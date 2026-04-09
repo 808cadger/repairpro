@@ -1,0 +1,32 @@
+{
+  "name": "AutoRepairIQ Pro",
+  "short_name": "RepairIQ",
+  "description": "AI-powered auto repair — damage scan, cost estimation, shop management, finance",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b0d14",
+  "theme_color": "#f59e0b",
+  "categories": ["utilities", "automotive", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Scan Damage",
+      "short_name": "Scan",
+      "url": "./index.html",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Quick Estimate",
+      "short_name": "Estimate",
+      "url": "./index.html",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

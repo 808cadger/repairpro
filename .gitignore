@@ -1,0 +1,13 @@
+node_modules/
+dist-electron/
+.env
+*.db
+uploads/
+android/app/build/
+android/.gradle/
+android/build/
+*.pyc
+__pycache__/
+.venv/
+*.apk
+*.aab

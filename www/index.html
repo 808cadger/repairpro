@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AutoRepairIQ Pro</title>
+  <meta name="description" content="AI-powered auto repair — damage scan, cost estimation, shop management, and finance tracking." />
+  <meta name="application-name" content="AutoRepairIQ Pro" />
+  <meta name="theme-color" content="#f59e0b" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://api.anthropic.com https://overpass-api.de; font-src 'self'; frame-src 'none'; base-uri 'self'; form-action 'self';" />
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0b0d14;
+      --surface: #131825;
+      --surface2: #1b2336;
+      --border: #1e2d4a;
+      --accent: #f59e0b;
+      --blue: #3b82f6;
+      --green: #22c55e;
+      --red: #ef4444;
+      --orange: #fb923c;
+      --text: #e2e8f0;
+      --muted: #8892a4;
+      --radius: 10px;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      line-height: 1.55; min-height: 100vh;
+      padding-bottom: 72px;
+    }
+
+    /* ── Header ── */
+    header {
+      padding: 1.1rem 1.6rem 0.9rem;
+      border-bottom: 1px solid var(--border);
+      background: rgba(11,13,20,0.94);
+      backdrop-filter: blur(10px);
+      position: sticky; top: 0; z-index: 50;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .logo { font-size: 1.35rem; font-weight: 800; }
+    .logo span { color: var(--accent); }
+    .header-sub { font-size: 0.78rem; color: var(--muted); margin-top: 0.1rem; }
+
+    /* ── Bottom Nav ── */
+    .bottom-nav {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 50;
+      background: rgba(11,13,20,0.96); backdrop-filter: blur(10px);
+      border-top: 1px solid var(--border);
+      display: flex; justify-content: space-around;
+      padding: 0.45rem 0 max(0.45rem, env(safe-area-inset-bottom));
+    }
+    .nav-btn {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      gap: 0.15rem; background: none; border: none; color: var(--muted);
+      font-size: 0.62rem; font-weight: 700; cursor: pointer;
+      transition: color 0.15s; padding: 0.35rem 0;
+    }
+    .nav-btn.active { color: var(--accent); }
+    .nav-btn .nav-icon { font-size: 1.2rem; }
+
+    /* ── Tab Panels ── */
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .inner { padding: 1.4rem 1.6rem; max-width: 760px; }
+    .section-label {
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.14em;
+      text-transform: uppercase; color: var(--accent); margin-bottom: 0.45rem;
+    }
+    .panel-title {
+      font-size: 1.15rem; font-weight: 800; margin-bottom: 1.1rem;
+    }
+
+    /* ── Forms ── */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem; margin-bottom: 1.1rem; }
+    .form-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+    @media (max-width: 520px) { .form-grid, .form-grid.three { grid-template-columns: 1fr; } }
+    .form-group { display: flex; flex-direction: column; gap: 0.3rem; }
+    .form-group label { font-size: 0.72rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .form-input, .form-select, .form-textarea {
+      width: 100%; padding: 0.62rem 0.88rem;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); font-size: 0.88rem;
+      outline: none; transition: border-color 0.15s; font-family: inherit;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--accent); }
+    .form-input::placeholder, .form-textarea::placeholder { color: var(--muted); }
+    .form-select {
+      -webkit-appearance: none; cursor: pointer;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238892a4' fill='none' stroke-width='1.5'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 0.9rem center; padding-right: 2.2rem;
+    }
+    .form-textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
+
+    /* ── Buttons ── */
+    .btn-primary {
+      width: 100%; padding: 0.88rem; border-radius: var(--radius);
+      background: linear-gradient(135deg, var(--accent), #d97706);
+      color: #000; font-size: 0.97rem; font-weight: 800; border: none; cursor: pointer;
+      transition: opacity 0.15s, transform 0.15s cubic-bezier(0.4,0,0.2,1);
+    }
+    .btn-primary:hover { opacity: 0.88; transform: translateY(-1px); }
+    .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+    .btn-secondary {
+      padding: 0.62rem 1.2rem; border-radius: 8px;
+      background: transparent; border: 1px solid var(--accent);
+      color: var(--accent); font-size: 0.85rem; font-weight: 700; cursor: pointer;
+    }
+    .btn-ghost {
+      padding: 0.55rem 1rem; border-radius: 8px;
+      background: transparent; border: 1px solid var(--border);
+      color: var(--muted); font-size: 0.82rem; font-weight: 600; cursor: pointer;
+    }
+    .btn-row { display: flex; gap: 0.7rem; margin-top: 1rem; flex-wrap: wrap; }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1rem 1.2rem; margin-bottom: 0.85rem;
+      transition: border-color 0.15s;
+    }
+    .card:hover { border-color: rgba(245,158,11,0.35); }
+    .card h3 { font-size: 0.88rem; font-weight: 800; margin-bottom: 0.6rem; }
+
+    /* ── Cost Grid ── */
+    .cost-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.7rem; margin-bottom: 1rem;
+    }
+    @media (max-width: 480px) { .cost-grid { grid-template-columns: 1fr 1fr; } }
+    .cost-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 0.85rem; text-align: center;
+    }
+    .cost-label { font-size: 0.68rem; font-weight: 700; color: var(--muted); text-transform: uppercase; margin-bottom: 0.35rem; }
+    .cost-value { font-size: 1.05rem; font-weight: 800; }
+    .cost-value.amber { color: var(--accent); }
+    .cost-value.blue { color: var(--blue); }
+    .cost-value.green { color: var(--green); }
+
+    /* ── Results Panel ── */
+    .results-panel {
+      display: none; margin-top: 1.3rem;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden;
+    }
+    .results-panel.visible { display: block; }
+    .results-header {
+      padding: 0.9rem 1.3rem; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .results-header h3 { font-size: 1rem; font-weight: 800; }
+    .results-body { padding: 1.1rem 1.3rem; }
+
+    /* ── AI Summary ── */
+    .ai-summary {
+      font-size: 0.84rem; color: var(--muted); line-height: 1.6;
+      background: rgba(245,158,11,0.06); border: 1px solid rgba(245,158,11,0.18);
+      border-radius: 8px; padding: 0.8rem 1rem; margin-bottom: 1rem;
+    }
+    .ai-indicator { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.72rem; font-weight: 700; color: var(--accent); text-transform: uppercase; margin-bottom: 0.4rem; }
+
+    /* ── Scan Photo Zones ── */
+    .photo-zones { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin-bottom: 1rem; }
+    .photo-zone {
+      aspect-ratio: 4/3; background: var(--surface2); border: 2px dashed var(--border);
+      border-radius: var(--radius); display: flex; align-items: center; justify-content: center;
+      flex-direction: column; cursor: pointer; position: relative; overflow: hidden;
+      transition: border-color 0.15s;
+    }
+    .photo-zone:hover { border-color: var(--accent); }
+    .photo-zone img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .photo-zone video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; }
+    .photo-zone .placeholder { color: var(--muted); font-size: 0.82rem; text-align: center; }
+    .photo-zone .placeholder .icon { font-size: 1.8rem; margin-bottom: 0.3rem; }
+    .photo-zone .clear-btn {
+      position: absolute; top: 6px; right: 6px; width: 24px; height: 24px;
+      border-radius: 50%; background: rgba(0,0,0,0.7); border: none;
+      color: white; font-size: 14px; cursor: pointer; display: none;
+      z-index: 2; line-height: 1;
+    }
+    .cam-btn {
+      position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
+      padding: 0.4rem 1rem; background: var(--accent); color: #000;
+      border: none; border-radius: 20px; font-weight: 700; font-size: 0.78rem;
+      cursor: pointer; display: none; z-index: 2;
+    }
+
+    /* ── Scan Pipeline Steps ── */
+    .pipeline-steps {
+      display: flex; justify-content: space-between; margin-bottom: 1.2rem;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 0.8rem 1rem;
+    }
+    .pipe-step {
+      display: flex; flex-direction: column; align-items: center; gap: 0.2rem;
+      font-size: 0.68rem; font-weight: 700; color: var(--muted);
+      transition: color 0.2s;
+    }
+    .pipe-step .step-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--border); transition: background 0.3s;
+    }
+    .pipe-step.active .step-dot { background: var(--accent); }
+    .pipe-step.active { color: var(--accent); }
+    .pipe-step.done .step-dot { background: var(--green); }
+    .pipe-step.done { color: var(--green); }
+
+    /* ── Scan Results Sheet ── */
+    .scan-results { display: none; }
+    .scan-results.visible { display: block; }
+    .severity-badge {
+      display: inline-block; padding: 0.2rem 0.6rem; border-radius: 20px;
+      font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+    }
+    .sev-minor { background: rgba(34,197,94,0.15); color: var(--green); }
+    .sev-moderate { background: rgba(245,158,11,0.15); color: var(--accent); }
+    .sev-severe { background: rgba(239,68,68,0.15); color: var(--red); }
+
+    /* ── Job Cards ── */
+    .job-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 0.95rem 1.1rem;
+      margin-bottom: 0.7rem; transition: border-color 0.15s;
+    }
+    .job-card:hover { border-color: rgba(245,158,11,0.35); }
+    .job-card-top { display: flex; justify-content: space-between; gap: 0.6rem; margin-bottom: 0.4rem; }
+    .job-client { font-size: 0.97rem; font-weight: 800; }
+    .job-vehicle { font-size: 0.8rem; color: var(--muted); }
+    .job-repair { font-size: 0.82rem; color: var(--text); }
+    .job-total { font-size: 0.97rem; font-weight: 800; color: var(--accent); }
+    .job-footer { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.65rem; flex-wrap: wrap; }
+    .job-date { font-size: 0.72rem; color: var(--muted); margin-right: auto; }
+    .status-btn {
+      font-size: 0.7rem; font-weight: 700; padding: 0.2rem 0.6rem;
+      border-radius: 999px; border: 1px solid; cursor: pointer; background: transparent;
+    }
+    .s-estimate { border-color: rgba(245,158,11,0.4); color: var(--accent); }
+    .s-in-progress { border-color: rgba(59,130,246,0.4); color: var(--blue); }
+    .s-done { border-color: rgba(34,197,94,0.4); color: var(--green); }
+    .s-invoiced { border-color: rgba(168,85,247,0.4); color: #a855f7; }
+
+    /* ── Finance ── */
+    .expense-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 0.7rem 0; border-bottom: 1px solid rgba(30,45,74,0.4);
+      font-size: 0.86rem;
+    }
+    .expense-cat {
+      font-size: 0.68rem; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.06em;
+    }
+    .expense-amount { font-weight: 800; color: var(--accent); }
+    .finance-total {
+      display: flex; justify-content: space-between; padding: 1rem 0;
+      font-size: 1.1rem; font-weight: 800; border-top: 2px solid var(--border);
+      margin-top: 0.5rem;
+    }
+
+    /* ── Settings ── */
+    .settings-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.2rem 1.4rem; margin-bottom: 1.1rem;
+    }
+    .settings-card h3 { font-size: 0.88rem; font-weight: 800; margin-bottom: 0.9rem; }
+    .settings-hint { font-size: 0.75rem; color: var(--muted); margin-top: 0.25rem; line-height: 1.5; }
+
+    /* ── Misc ── */
+    .empty-state { text-align: center; padding: 3rem 1rem; color: var(--muted); font-size: 0.9rem; line-height: 1.7; }
+    .empty-state-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+    .error-msg { display: none; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); border-radius: 8px; padding: 0.75rem 1rem; font-size: 0.83rem; color: var(--red); margin-top: 0.8rem; }
+    .error-msg.visible { display: block; }
+    .divider { display: flex; align-items: center; gap: 0.7rem; color: var(--muted); font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin: 1rem 0; }
+    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+    .spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid rgba(245,158,11,0.3); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .hidden { display: none !important; }
+
+    footer { text-align: center; padding: 1.4rem; border-top: 1px solid var(--border); font-size: 0.78rem; color: var(--muted); }
+    footer a { color: var(--accent); text-decoration: none; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div>
+      <div class="logo">🔧 <span>AutoRepairIQ</span> Pro</div>
+      <div class="header-sub" id="headerShopName">AI Auto Repair Hub</div>
+    </div>
+    <button style="background:none;border:1px solid var(--border);color:var(--muted);font-size:1.15rem;padding:0.38rem 0.6rem;border-radius:8px;cursor:pointer" onclick="openTab('settings')" title="Settings">⚙️</button>
+  </header>
+
+  <!-- ══════════════════════════════════════════
+       GARAGE TAB
+  ══════════════════════════════════════════ -->
+  <div class="tab-panel active" id="tab-garage">
+    <div class="inner">
+      <p class="section-label">My Garage</p>
+      <h2 class="panel-title">Vehicles &amp; Maintenance</h2>
+
+      <div class="card" id="addVehicleCard">
+        <h3>Add Vehicle</h3>
+        <div class="form-grid three">
+          <div class="form-group">
+            <label>Year</label>
+            <select class="form-select" id="gYear"><option value="">— Year —</option></select>
+          </div>
+          <div class="form-group">
+            <label>Make</label>
+            <select class="form-select" id="gMake">
+              <option value="">— Make —</option>
+              <option>Toyota</option><option>Honda</option><option>Ford</option>
+              <option>Chevrolet</option><option>BMW</option><option>Nissan</option>
+              <option>Subaru</option><option>Hyundai</option><option>Kia</option>
+              <option>Dodge</option><option>Jeep</option><option>GMC</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Model</label>
+            <select class="form-select" id="gModel"><option value="">— Select Make —</option></select>
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Mileage</label>
+            <input class="form-input" id="gMileage" type="text" placeholder="e.g. 85,000">
+          </div>
+          <div class="form-group">
+            <label>VIN (optional)</label>
+            <input class="form-input" id="gVin" type="text" placeholder="17-char VIN" maxlength="17">
+          </div>
+        </div>
+        <button class="btn-primary" onclick="addVehicle()">Add to Garage</button>
+      </div>
+
+      <div id="vehiclesList"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SCAN TAB
+  ══════════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-scan">
+    <div class="inner">
+      <p class="section-label">AI Damage Scan</p>
+      <h2 class="panel-title">Photo → Estimate</h2>
+
+      <div class="pipeline-steps" id="pipelineSteps">
+        <div class="pipe-step" id="step-intake"><div class="step-dot"></div><span>Intake</span></div>
+        <div class="pipe-step" id="step-vision"><div class="step-dot"></div><span>Vision</span></div>
+        <div class="pipe-step" id="step-parts"><div class="step-dot"></div><span>Parts</span></div>
+        <div class="pipe-step" id="step-pricing"><div class="step-dot"></div><span>Pricing</span></div>
+        <div class="pipe-step" id="step-decision"><div class="step-dot"></div><span>Decision</span></div>
+      </div>
+
+      <div class="form-grid three" style="margin-bottom:0.8rem">
+        <div class="form-group">
+          <label>Year</label>
+          <input class="form-input" id="scanYear" type="text" placeholder="2022" maxlength="4">
+        </div>
+        <div class="form-group">
+          <label>Make</label>
+          <input class="form-input" id="scanMake" type="text" placeholder="Toyota">
+        </div>
+        <div class="form-group">
+          <label>Model</label>
+          <input class="form-input" id="scanModel" type="text" placeholder="Camry">
+        </div>
+      </div>
+
+      <div class="photo-zones">
+        <div class="photo-zone" id="photoZone0" onclick="scanTapPhoto(0)">
+          <img id="photoPreview0" style="display:none" alt="">
+          <video id="photoVideo0" autoplay playsinline muted></video>
+          <div class="placeholder" id="photoPlaceholder0"><div class="icon">📸</div>Front angle</div>
+          <button class="clear-btn" id="photoClear0" onclick="event.stopPropagation();scanClearPhoto(0)">✕</button>
+          <button class="cam-btn" id="camCapture0" onclick="event.stopPropagation();scanCapture(0)">Capture</button>
+          <canvas id="photoCanvas0" style="display:none"></canvas>
+          <input type="file" id="photoFile0" accept="image/*" style="display:none" onchange="scanFileChange(event,0)">
+        </div>
+        <div class="photo-zone" id="photoZone1" onclick="scanTapPhoto(1)">
+          <img id="photoPreview1" style="display:none" alt="">
+          <video id="photoVideo1" autoplay playsinline muted></video>
+          <div class="placeholder" id="photoPlaceholder1"><div class="icon">📸</div>Close-up</div>
+          <button class="clear-btn" id="photoClear1" onclick="event.stopPropagation();scanClearPhoto(1)">✕</button>
+          <button class="cam-btn" id="camCapture1" onclick="event.stopPropagation();scanCapture(1)">Capture</button>
+          <canvas id="photoCanvas1" style="display:none"></canvas>
+          <input type="file" id="photoFile1" accept="image/*" style="display:none" onchange="scanFileChange(event,1)">
+        </div>
+      </div>
+
+      <button class="btn-primary" id="scanAnalyzeBtn" onclick="runScanPipeline()">🔍 Analyze Damage</button>
+      <div class="error-msg" id="scanError"></div>
+
+      <div class="scan-results" id="scanResults">
+        <div class="card" style="margin-top:1.2rem">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.6rem">
+            <h3 id="scanResultTitle">Damage Assessment</h3>
+            <span class="severity-badge" id="scanSeverity">—</span>
+          </div>
+          <div style="font-size:0.84rem;color:var(--muted);margin-bottom:0.8rem" id="scanSummary"></div>
+          <div class="cost-grid">
+            <div class="cost-card">
+              <div class="cost-label">Parts</div>
+              <div class="cost-value blue" id="scanCostParts">—</div>
+            </div>
+            <div class="cost-card">
+              <div class="cost-label">Labor</div>
+              <div class="cost-value amber" id="scanCostLabor">—</div>
+            </div>
+            <div class="cost-card">
+              <div class="cost-label">Total</div>
+              <div class="cost-value green" id="scanCostTotal">—</div>
+            </div>
+          </div>
+          <div style="font-size:0.78rem;color:var(--muted);margin-bottom:0.8rem" id="scanConfidence"></div>
+          <div id="scanPartsListWrap"></div>
+          <div class="btn-row">
+            <button class="btn-secondary" onclick="saveScanAsJob()">💾 Save as Job</button>
+            <button class="btn-ghost" onclick="exportScanReport()">📄 Export Report</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       ESTIMATE TAB
+  ══════════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-estimate">
+    <div class="inner">
+      <p class="section-label">Quick Estimate</p>
+      <h2 class="panel-title">AI or Lookup</h2>
+
+      <div class="form-grid">
+        <div class="form-group" style="grid-column:1/-1">
+          <label>Client Name</label>
+          <input class="form-input" id="estClientName" type="text" placeholder="e.g. John Kaena" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="form-grid three">
+        <div class="form-group">
+          <label>Year</label>
+          <select class="form-select" id="estYear"><option value="">— Year —</option></select>
+        </div>
+        <div class="form-group">
+          <label>Make</label>
+          <select class="form-select" id="estMake">
+            <option value="">— Make —</option>
+            <option>Toyota</option><option>Honda</option><option>Ford</option>
+            <option>Chevrolet</option><option>BMW</option><option>Nissan</option>
+            <option>Subaru</option><option>Hyundai</option><option>Kia</option>
+            <option>Dodge</option><option>Jeep</option><option>GMC</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Model</label>
+          <select class="form-select" id="estModel"><option value="">— Select Make —</option></select>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom:0.9rem">
+        <label>Describe the Job (AI-powered)</label>
+        <textarea class="form-textarea" id="estJobDesc" placeholder="e.g. Front brake pads and rotors, customer hearing grinding"></textarea>
+      </div>
+      <button class="btn-primary" id="aiEstimateBtn" onclick="runAiEstimate()">✦ Generate AI Estimate →</button>
+
+      <div class="divider">or use lookup</div>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Repair Category</label>
+          <select class="form-select" id="estCategory">
+            <option value="">— Category —</option>
+            <option>Engine</option><option>Brakes</option><option>Transmission</option>
+            <option>Suspension</option><option>Electrical</option><option>AC/Heating</option>
+            <option>Exhaust</option><option>Tires</option><option>Oil/Fluids</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Specific Repair</label>
+          <select class="form-select" id="estRepair"><option value="">— Select Category —</option></select>
+        </div>
+      </div>
+      <button class="btn-primary" onclick="runLookupEstimate()">Get Lookup Estimate →</button>
+
+      <div class="error-msg" id="estimateError"></div>
+
+      <div class="results-panel" id="estResultsPanel">
+        <div class="results-header"><h3 id="estResultTitle"></h3></div>
+        <div class="results-body">
+          <div id="estAiSummary"></div>
+          <div class="cost-grid">
+            <div class="cost-card"><div class="cost-label">Labor</div><div class="cost-value amber" id="estCostLabor">—</div></div>
+            <div class="cost-card"><div class="cost-label">Parts</div><div class="cost-value blue" id="estCostParts">—</div></div>
+            <div class="cost-card"><div class="cost-label">Total</div><div class="cost-value green" id="estCostTotal">—</div></div>
+          </div>
+          <div style="font-size:0.82rem;color:var(--muted);margin-bottom:0.8rem" id="estLaborNote"></div>
+          <div class="btn-row">
+            <button class="btn-secondary" onclick="saveEstimateAsJob()">💾 Save Job</button>
+            <button class="btn-ghost" onclick="shareEstimateQuote()">📄 Share Quote</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       JOBS TAB
+  ══════════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-jobs">
+    <div class="inner">
+      <p class="section-label">Job Pipeline</p>
+      <h2 class="panel-title">Active &amp; Recent Jobs</h2>
+      <div id="jobsList"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       FINANCE TAB
+  ══════════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-finance">
+    <div class="inner">
+      <p class="section-label">Finance</p>
+      <h2 class="panel-title">Expenses &amp; Invoices</h2>
+
+      <div class="card">
+        <h3>Add Expense</h3>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Category</label>
+            <select class="form-select" id="expCategory">
+              <option value="labor">Labor</option>
+              <option value="parts">Parts</option>
+              <option value="materials">Materials</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Amount ($)</label>
+            <input class="form-input" id="expAmount" type="number" min="0" step="0.01" placeholder="0.00">
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:0.8rem">
+          <label>Description</label>
+          <input class="form-input" id="expDesc" type="text" placeholder="e.g. Brake pads — AutoZone">
+        </div>
+        <button class="btn-primary" onclick="addExpense()">Add Expense</button>
+      </div>
+
+      <div id="expensesList"></div>
+
+      <div class="finance-total">
+        <span>Total Expenses</span>
+        <span id="financeTotal" style="color:var(--accent)">$0</span>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-secondary" onclick="exportExpensesCSV()">📊 Export CSV (QuickBooks)</button>
+        <button class="btn-ghost" onclick="clearExpenses()">Clear All</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SETTINGS TAB
+  ══════════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-settings">
+    <div class="inner">
+      <p class="section-label">Settings</p>
+      <h2 class="panel-title">Shop &amp; AI Config</h2>
+
+      <div class="settings-card">
+        <h3>Shop Info</h3>
+        <div class="form-group" style="margin-bottom:0.7rem">
+          <label>Shop Name</label>
+          <input class="form-input" id="sShopName" type="text" placeholder="e.g. Kaena Auto Works">
+        </div>
+        <div class="form-group" style="margin-bottom:0.7rem">
+          <label>Phone</label>
+          <input class="form-input" id="sShopPhone" type="tel" placeholder="(808) 555-0100">
+        </div>
+        <div class="form-group">
+          <label>Hourly Rate ($/hr)</label>
+          <input class="form-input" id="sHourlyRate" type="number" min="50" max="300" placeholder="110">
+          <div class="settings-hint">Hawaii indie average: $110–$150/hr</div>
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <h3>AI Connection</h3>
+        <div class="form-group" style="margin-bottom:0.7rem">
+          <label>Claude API Key</label>
+          <input class="form-input" id="sApiKey" type="password" placeholder="sk-ant-api03-...">
+          <div class="settings-hint">Required for AI features. Stored on-device only. Get yours at <strong style="color:var(--accent)">console.anthropic.com</strong></div>
+        </div>
+        <div style="background:rgba(34,197,94,0.07);border:1px solid rgba(34,197,94,0.2);border-radius:8px;padding:0.75rem 1rem">
+          <div style="font-size:0.78rem;font-weight:700;color:var(--green);margin-bottom:0.3rem">No key? Use Demo Mode</div>
+          <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">Lookup estimates work without an API key. Add a key anytime for AI scan + chat.</div>
+        </div>
+      </div>
+
+      <button class="btn-primary" onclick="saveSettings()">Save Settings</button>
+      <div style="margin-top:1rem">
+        <button class="btn-ghost" onclick="resetApp()">Reset All Data</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Bottom Navigation ── -->
+  <nav class="bottom-nav">
+    <button class="nav-btn active" data-tab="garage" onclick="openTab('garage')">
+      <span class="nav-icon">🚗</span>Garage
+    </button>
+    <button class="nav-btn" data-tab="scan" onclick="openTab('scan')">
+      <span class="nav-icon">📸</span>Scan
+    </button>
+    <button class="nav-btn" data-tab="estimate" onclick="openTab('estimate')">
+      <span class="nav-icon">🔧</span>Estimate
+    </button>
+    <button class="nav-btn" data-tab="jobs" onclick="openTab('jobs')">
+      <span class="nav-icon">📋</span>Jobs
+    </button>
+    <button class="nav-btn" data-tab="finance" onclick="openTab('finance')">
+      <span class="nav-icon">💰</span>Finance
+    </button>
+  </nav>
+
+  <!-- ── Avatar Chatbot ── -->
+  <div id="sw-avatar" data-context="AutoRepairIQ Pro — AI auto repair: damage scanning, cost estimation, shop management, job tracking, and finance. Hawaii-based, right-to-repair aware."></div>
+
+  <!-- ── Scripts ── -->
+  <script src="./api-client.js"></script>
+  <script src="./avatar-widget.js"></script>
+
+  <footer>
+    AutoRepairIQ Pro — Pearl City, HI 🌺 &nbsp;·&nbsp;
+    <a href="https://github.com/808cadger/autorepairiq-pro" target="_blank" rel="noopener">GitHub</a>
+  </footer>
+
+  <script src="./app.js"></script>
+</body>
+</html>
