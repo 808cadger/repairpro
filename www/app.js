@@ -983,4 +983,83 @@ function clearError(id) {
   if (el) el.classList.remove('visible');
 }
 
+// ═══════════════════════════════════════
+//  PART IDENTIFIER ZONE
+// ═══════════════════════════════════════
+// #ASSUMPTION: partIdentifier.js is loaded before app.js uses these fns
+let _partIdStream = null;
+
+async function partIdTapZone() {
+  const preview = document.getElementById('partIdPreview');
+  if (preview?.src && preview.style.display !== 'none') { partIdClear(); return; }
+
+  if (navigator.mediaDevices?.getUserMedia) {
+    try {
+      _partIdStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } }, audio: false
+      });
+      const vid = document.getElementById('partIdVideo');
+      vid.srcObject = _partIdStream;
+      vid.style.display = 'block';
+      document.getElementById('partIdPlaceholder').style.display = 'none';
+
+      // Replace tap handler with capture
+      const zone = document.getElementById('partIdZone');
+      zone.onclick = partIdCapture;
+      return;
+    } catch(_) {}
+  }
+  document.getElementById('partIdFile').click();
+}
+
+function partIdCapture() {
+  const vid = document.getElementById('partIdVideo');
+  const canvas = document.getElementById('partIdCanvas');
+  canvas.width = vid.videoWidth || 640;
+  canvas.height = vid.videoHeight || 480;
+  canvas.getContext('2d').drawImage(vid, 0, 0, canvas.width, canvas.height);
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+  _partIdStopCamera();
+  _partIdSetPhoto(dataUrl);
+  // Reset tap handler back
+  document.getElementById('partIdZone').onclick = partIdTapZone;
+}
+
+function _partIdStopCamera() {
+  if (_partIdStream) { _partIdStream.getTracks().forEach(t => t.stop()); _partIdStream = null; }
+  const vid = document.getElementById('partIdVideo');
+  if (vid) { vid.srcObject = null; vid.style.display = 'none'; }
+}
+
+function partIdFileChange(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => _partIdSetPhoto(ev.target.result);
+  reader.readAsDataURL(file);
+  event.target.value = '';
+}
+
+function _partIdSetPhoto(dataUrl) {
+  const preview = document.getElementById('partIdPreview');
+  const placeholder = document.getElementById('partIdPlaceholder');
+  const clearBtn = document.getElementById('partIdClearBtn');
+  if (preview) { preview.src = dataUrl; preview.style.display = 'block'; }
+  if (placeholder) placeholder.style.display = 'none';
+  if (clearBtn) clearBtn.style.display = 'block';
+  if (typeof partIdentifier !== 'undefined') partIdentifier.identify(dataUrl);
+}
+
+function partIdClear() {
+  _partIdStopCamera();
+  const preview = document.getElementById('partIdPreview');
+  const placeholder = document.getElementById('partIdPlaceholder');
+  const clearBtn = document.getElementById('partIdClearBtn');
+  if (preview) { preview.src = ''; preview.style.display = 'none'; }
+  if (placeholder) placeholder.style.display = 'flex';
+  if (clearBtn) clearBtn.style.display = 'none';
+  if (typeof partIdentifier !== 'undefined') partIdentifier.clearAll();
+  document.getElementById('partIdZone').onclick = partIdTapZone;
+}
+
 function tick() { return new Promise(r => setTimeout(r, 60)); }
