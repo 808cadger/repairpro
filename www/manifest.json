@@ -1,7 +1,7 @@
 {
-  "name": "AutoRepairIQ Pro",
-  "short_name": "RepairIQ",
-  "description": "AI-powered auto repair — damage scan, cost estimation, shop management, finance",
+  "name": "RepairPro",
+  "short_name": "RepairPro",
+  "description": "AI-powered auto repair — damage scan, VIN decode, cost estimation, shop management, finance",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

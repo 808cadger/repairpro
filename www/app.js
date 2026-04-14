@@ -1,4 +1,4 @@
-// app.js — AutoRepairIQ Pro main controller
+// app.js — RepairPro main controller
 // Aloha from Pearl City! 🌺
 
 // ═══════════════════════════════════════
@@ -169,7 +169,7 @@ function updateHeaderShopName() {
 }
 
 function resetApp() {
-  if (!confirm('Reset ALL AutoRepairIQ Pro data?')) return;
+  if (!confirm('Reset ALL RepairPro data?')) return;
   Object.keys(localStorage).filter(k => k.startsWith('ariq_')).forEach(k => localStorage.removeItem(k));
   location.reload();
 }
@@ -245,7 +245,7 @@ function renderGarage() {
   if (!list) return;
 
   if (!vehicles.length) {
-    list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🚗</div>No vehicles yet. Add one above to start tracking.</div>';
+    list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🚗</div><strong>No vehicles in the garage yet</strong>Add a customer vehicle above to start service history, scans, and quotes.</div>';
     return;
   }
 
@@ -419,6 +419,8 @@ function setScanPhoto(slot, dataUrl) {
   if (placeholder) placeholder.style.display = 'none';
   if (clearBtn) clearBtn.style.display = 'block';
   if (zone) zone.classList.add('has-photo');
+  // Auto-identify the part from the captured photo
+  if (typeof partIdentifier !== 'undefined') partIdentifier.identify(dataUrl);
 }
 
 function scanClearPhoto(slot) {
@@ -500,48 +502,98 @@ async function runScanPipeline() {
         return { type: 'image', source: { type: 'base64', media_type: mediaType, data } };
       });
 
-      // Step 1: Vision
+      // Step 1: Vision — expert damage assessor with collision repair terminology
       setScanStep('vision');
+      const vehicleDesc = `${year} ${make} ${model}`;
       const visionRaw = await ClaudeAPI.call(apiKey, {
         model: 'claude-sonnet-4-6', max_tokens: 800,
-        system: 'You are an expert automotive damage assessor. Identify damaged panel, damage type, severity. Return ONLY valid JSON.',
+        system: `You are an expert automotive damage assessor with 20 years of collision repair experience. Analyze vehicle damage photos with clinical precision. Identify: (1) the exact damaged panel using standard collision repair terminology (front bumper cover, driver-side front fender, hood, door panel, mirror housing, headlight assembly, taillight assembly, windshield, quarter panel), (2) damage type: dent/crease/scratch/crack/tear/shatter/missing, (3) severity: minor/moderate/severe, (4) secondary damage on adjacent parts, (5) prior repair indicators. Never claim certainty when the photo is unclear. Use language like 'likely', 'possible', 'appears to be'. Return ONLY valid JSON.`,
         messages: [{ role: 'user', content: [...imageBlocks, {
           type: 'text',
-          text: `Analyze damage on this ${year} ${make} ${model}. Return JSON: {"primary_part":"","damage_type":"","severity":"minor|moderate|severe","secondary_damage":[],"photo_quality":"good|fair|poor","raw_description":""}`
+          text: `Analyze the damage visible in ${photos.length > 1 ? 'these photos' : 'this photo'} of a ${vehicleDesc}.
+
+Return ONLY this JSON:
+{"primary_part":"<exact panel name in collision repair terminology>","damage_type":"<dent|crease|scratch|crack|tear|shatter|missing>","severity":"<minor|moderate|severe>","secondary_damage":["<part — damage type>"],"prior_repair_indicators":<true|false>,"photo_quality":"<good|fair|poor>","raw_description":"<2-3 sentence clinical description — use cautious language where clarity is limited>"}
+
+Be precise. Use standard Mitchell/Audatex panel naming. Return ONLY JSON.`
         }]}],
       });
       const visionText = visionRaw.content?.filter(b => b.type === 'text').map(b => b.text).join('') || '{}';
       const visionResult = JSON.parse(visionText.match(/\{[\s\S]*\}/)?.[0] || '{}');
+      if (!visionResult.primary_part || !visionResult.damage_type) throw new Error('Vision analysis returned incomplete data');
 
-      // Step 2: Parts
+      // Step 2: Parts — automotive parts specialist maps damage to line items
       setScanStep('parts');
       const partsRaw = await ClaudeAPI.call(apiKey, {
         model: 'claude-sonnet-4-6', max_tokens: 600,
-        system: 'Map damage to repair line items. Return ONLY JSON array.',
-        messages: [{ role: 'user', content: `${year} ${make} ${model}. Damage: ${visionResult.primary_part} — ${visionResult.damage_type} (${visionResult.severity}). Return JSON array: [{"part_name":"","repair_action":"replace|repair|refinish","parts_source":"OEM|aftermarket","quantity":1}]` }],
+        system: `You are an automotive parts specialist at a certified collision center. Map the damage description to specific repair line items. For each: part name, repair action (replace/repair/refinish/blend), parts source (OEM/aftermarket), quantity. Consider vehicle market segment for OEM vs aftermarket recommendation. Return ONLY valid JSON array.`,
+        messages: [{ role: 'user', content: `Map the following collision damage to repair line items for a ${vehicleDesc}.
+
+Damage assessment:
+- Primary part: ${visionResult.primary_part}
+- Damage type: ${visionResult.damage_type}
+- Severity: ${visionResult.severity}
+- Secondary damage: ${(visionResult.secondary_damage || []).join(', ') || 'none'}
+- Prior repair indicators: ${visionResult.prior_repair_indicators ? 'yes' : 'no'}
+- Description: ${visionResult.raw_description}
+
+Return ONLY a JSON array:
+[{"part_name":"<full part name>","repair_action":"<replace|repair|refinish|blend>","parts_source":"<OEM|aftermarket|n/a>","quantity":<number>,"notes":"<optional short note>"}]
+
+Include all parts needing work. Consider: severe → replace; moderate → repair or replace; minor → repair or refinish. Luxury/late-model vehicles lean OEM. Return ONLY JSON array.` }],
       });
       const partsText = partsRaw.content?.filter(b => b.type === 'text').map(b => b.text).join('') || '[]';
       const partsResult = JSON.parse(partsText.match(/\[[\s\S]*\]/)?.[0] || '[]');
+      if (!Array.isArray(partsResult) || partsResult.length === 0) throw new Error('Parts mapping returned no items');
 
-      // Step 3: Pricing
+      // Step 3: Pricing — certified estimator with Hawaii rates
       setScanStep('pricing');
+      const partsListText = partsResult.map((p, i) =>
+        `${i + 1}. ${p.part_name} — ${p.repair_action} (${p.parts_source}, qty: ${p.quantity})${p.notes ? ' — ' + p.notes : ''}`
+      ).join('\n');
       const pricingRaw = await ClaudeAPI.call(apiKey, {
         model: 'claude-sonnet-4-6', max_tokens: 700,
-        system: 'Certified auto estimator. Hawaii rates $110-150/hr. Return ONLY valid JSON.',
-        messages: [{ role: 'user', content: `Cost estimate for ${year} ${make} ${model}.\nParts: ${JSON.stringify(partsResult)}\nReturn JSON: {"parts":{"low":N,"mid":N,"high":N},"labor":{"hours":N,"rate":110,"low":N,"mid":N,"high":N},"paint":{"low":N,"mid":N,"high":N},"total":{"low":N,"mid":N,"high":N}}` }],
+        system: `You are a certified automotive estimator. Generate repair cost estimates for the parts list. Provide low/mid/high ranges for: parts cost, labor (hours × rate $90–$150/hr Hawaii indie shops, default $110), paint materials. Base costs on vehicle year/make/model and damage severity. Return ONLY valid JSON.`,
+        messages: [{ role: 'user', content: `Generate repair cost estimate for a ${vehicleDesc}.
+
+Parts list:
+${partsListText}
+
+Return ONLY this JSON:
+{"parts":{"low":<number>,"mid":<number>,"high":<number>},"labor":{"hours":<estimated total hours>,"rate":110,"low":<hours*90>,"mid":<hours*110>,"high":<hours*130>},"paint":{"low":<number>,"mid":<number>,"high":<number>},"total":{"low":<parts.low+labor.low+paint.low>,"mid":<parts.mid+labor.mid+paint.mid>,"high":<parts.high+labor.high+paint.high>},"line_items":[{"part_name":"<name>","parts_cost_mid":<number>,"labor_hours":<number>,"labor_cost_mid":<number>}]}
+
+Ranges reflect shop/region variation. Return ONLY JSON.` }],
       });
       const pricingText = pricingRaw.content?.filter(b => b.type === 'text').map(b => b.text).join('') || '{}';
       const pricingResult = JSON.parse(pricingText.match(/\{[\s\S]*\}/)?.[0] || '{}');
+      if (!pricingResult.total?.mid) throw new Error('Pricing returned invalid totals');
 
-      // Step 4: Decision
+      // Step 4: Decision — QA confidence score + human review flag
       setScanStep('decision');
       const decisionRaw = await ClaudeAPI.call(apiKey, {
         model: 'claude-sonnet-4-6', max_tokens: 500,
-        system: 'Senior QA manager. Score confidence 0-100. Return ONLY JSON.',
-        messages: [{ role: 'user', content: `Review: Vision=${JSON.stringify(visionResult)}, Parts=${JSON.stringify(partsResult)}, Pricing=${JSON.stringify(pricingResult)}. Return JSON: {"confidence_score":N,"human_review_flag":bool,"executive_summary":"","disclaimer":"Preliminary estimate."}` }],
+        system: `You are a senior QA manager at an insurance claims center. Review the full pipeline output. Score confidence 0-100. Set human_review_flag=true if confidence < 70, OR repair cost > $5000, OR photo quality is poor, OR prior repair indicators found. Write a one-sentence executive summary. Estimate realistic repair shop days. Return ONLY valid JSON.`,
+        messages: [{ role: 'user', content: `Review this complete damage estimation pipeline output for a ${vehicleDesc}.
+
+VISION: ${JSON.stringify(visionResult)}
+PARTS: ${JSON.stringify(partsResult)}
+PRICING: ${JSON.stringify(pricingResult)}
+
+Evaluate consistency between agents, photo quality, severity alignment, pricing reasonableness, any red flags.
+
+Return ONLY this JSON:
+{"confidence_score":<0-100>,"human_review_flag":<true|false>,"review_reasons":["<reason if flagged>"],"executive_summary":"<one sentence: part, damage type, estimate range>","repair_days_min":<integer>,"repair_days_max":<integer>,"pipeline_warnings":["<inconsistencies>"],"disclaimer":"Preliminary estimate only. Visible damage assessed from photos. Hidden or mechanical damage requires physical inspection."}
+
+Set human_review_flag=true if: confidence<70 OR total.high>5000 OR photo_quality=poor OR prior_repair_indicators=true. Return ONLY JSON.` }],
       });
       const decisionText = decisionRaw.content?.filter(b => b.type === 'text').map(b => b.text).join('') || '{}';
       const decisionResult = JSON.parse(decisionText.match(/\{[\s\S]*\}/)?.[0] || '{}');
+      // Local safety net for human review rules
+      // #ASSUMPTION: Claude may miss edge cases — enforce programmatically
+      if ((decisionResult.confidence_score || 0) < 70) decisionResult.human_review_flag = true;
+      if ((pricingResult.total?.high || 0) > 5000) decisionResult.human_review_flag = true;
+      if (visionResult.photo_quality === 'poor') decisionResult.human_review_flag = true;
+      if (visionResult.prior_repair_indicators === true) decisionResult.human_review_flag = true;
 
       currentScanResult = { vision: visionResult, parts_map: partsResult, pricing: pricingResult, decision: decisionResult, vehicle };
     }
@@ -641,13 +693,13 @@ COST ESTIMATE
 Confidence: ${d.confidence_score || '—'}/100
 ${d.disclaimer || 'Preliminary estimate only.'}
 
-— AutoRepairIQ Pro · Pearl City, Hawaii
+— RepairPro · Pearl City, Hawaii
 `;
 
   const blob = new Blob([report], { type: 'text/plain' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `autorepairiq-scan-${new Date().toISOString().slice(0,10)}.txt`;
+  a.download = `repairpro-scan-${new Date().toISOString().slice(0,10)}.txt`;
   document.body.appendChild(a); a.click();
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 800);
 }
@@ -765,7 +817,7 @@ function shareEstimateQuote() {
   if (!currentEstimate) return;
   const e = currentEstimate;
   const fmt = n => '$' + n.toLocaleString();
-  const shop = appSettings.shopName || 'AutoRepairIQ Pro';
+  const shop = appSettings.shopName || 'RepairPro';
   const vehicle = [e.year, e.make, e.model].filter(Boolean).join(' ') || 'Vehicle';
   const text = `REPAIR ESTIMATE — ${shop}\nClient: ${e.clientName}\nVehicle: ${vehicle}\nJob: ${e.repairName}\nTotal: ${fmt(e.totalMin)}–${fmt(e.totalMax)}\n${e.date}`;
 
@@ -789,7 +841,7 @@ function renderJobs() {
   if (!list) return;
 
   if (!jobs.length) {
-    list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div>No jobs yet. Run an estimate and save it.</div>';
+    list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div><strong>No jobs saved yet</strong>Run a scan or create an estimate, then save it here to track shop status.</div>';
     return;
   }
 
@@ -859,7 +911,7 @@ function renderExpenses() {
   if (!list) return;
 
   if (!expenses.length) {
-    list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💰</div>No expenses yet.</div>';
+    list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💰</div><strong>No expenses logged yet</strong>Add shop costs here to keep parts, materials, and overhead visible.</div>';
     if (totalEl) totalEl.textContent = '$0';
     return;
   }
@@ -909,7 +961,7 @@ function exportExpensesCSV() {
   const blob = new Blob([csv], { type: 'text/csv' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `autorepairiq-expenses-${new Date().toISOString().slice(0,10)}.csv`;
+  a.download = `repairpro-expenses-${new Date().toISOString().slice(0,10)}.csv`;
   document.body.appendChild(a); a.click();
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 800);
 }

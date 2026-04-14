@@ -1,6 +1,6 @@
 {
-  "appId": "com.autorepairiq.pro",
-  "appName": "AutoRepairIQ Pro",
+  "appId": "com.repairpro.app",
+  "appName": "RepairPro",
   "webDir": "www",
   "bundledWebRuntime": false,
   "server": {
