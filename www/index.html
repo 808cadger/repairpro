@@ -441,7 +441,7 @@
   <!-- ══════════════════════════════════════════
        GARAGE TAB
   ══════════════════════════════════════════ -->
-  <div class="tab-panel active" id="tab-garage">
+  <div class="tab-panel" id="tab-garage">
     <div class="inner">
       <p class="section-label">My Garage</p>
       <h2 class="panel-title">Vehicles &amp; Maintenance</h2>
@@ -488,7 +488,7 @@
   <!-- ══════════════════════════════════════════
        SCAN TAB
   ══════════════════════════════════════════ -->
-  <div class="tab-panel" id="tab-scan">
+  <div class="tab-panel active" id="tab-scan">
     <div class="inner">
       <p class="section-label">AI Damage Scan</p>
       <h2 class="panel-title">Photo → Estimate</h2>
@@ -879,10 +879,10 @@
 
   <!-- ── Bottom Navigation ── -->
   <nav class="bottom-nav">
-    <button class="nav-btn active" data-tab="garage" onclick="openTab('garage')">
+    <button class="nav-btn" data-tab="garage" onclick="openTab('garage')">
       <span class="nav-icon">🚗</span>Garage
     </button>
-    <button class="nav-btn" data-tab="scan" onclick="openTab('scan')">
+    <button class="nav-btn active" data-tab="scan" onclick="openTab('scan')">
       <span class="nav-icon">📸</span>Scan
     </button>
     <button class="nav-btn" data-tab="estimate" onclick="openTab('estimate')">
