@@ -1,4 +1,4 @@
-package com.autorepairiq.pro;
+package com.repairpro.app;
 
 import com.getcapacitor.BridgeActivity;
 
