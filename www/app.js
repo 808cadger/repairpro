@@ -134,6 +134,7 @@ function openTab(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   if (name === 'jobs') renderJobs();
   if (name === 'finance') renderExpenses();
+  if (name === 'coach') coachRenderThread();
 }
 
 // ═══════════════════════════════════════
@@ -1063,3 +1064,148 @@ function partIdClear() {
 }
 
 function tick() { return new Promise(r => setTimeout(r, 60)); }
+
+// ═══════════════════════════════════════
+//  REPAIR COACH — AI diagnostic + price
+//  Aloha from Pearl City! 🏝
+// ═══════════════════════════════════════
+// #ASSUMPTION: ClaudeAPI from api-client.js; falls back to demo if no key
+
+const COACH_STORAGE = 'ariq_coach_history';
+const COACH_SYSTEM = `You are a master ASE-certified automotive technician and repair cost advisor with 25 years of hands-on shop experience. You are coaching a vehicle owner to diagnose their problem and understand what it will cost to fix.
+
+Your diagnostic coaching method — MANDATORY:
+1. Ask ONE focused question at a time. Never ask multiple questions in one message.
+2. Gather these details in order before giving a price: vehicle year/make/model → symptom description → when it started → severity/frequency → any warning lights → relevant history (recent repairs, mileage)
+3. After 4-6 exchanges (once you have enough), deliver a PRICE ESTIMATE in this format:
+
+**Most Likely Diagnosis:** [repair name]
+**Confidence:** [High/Medium/Low]
+
+**Price Breakdown:**
+- Parts: $[low]–$[high]
+- Labor: [X]–[Y] hrs @ $110–150/hr = $[low]–$[high]
+- **Total: $[low]–$[high]** (indie shop, Hawaii)
+
+**What to expect:** [2-3 sentences: what the repair involves, how urgent, DIY vs shop]
+
+**⚠️ Could also be:** [1 alternative if applicable, with rough price difference]
+
+Rules:
+- Always ask about the vehicle first if not given
+- Be direct about prices — give real ranges, not "it depends"
+- Hawaii indie shop labor: $110–150/hr default
+- If symptoms suggest multiple issues, address the most likely first
+- Flag anything safety-critical immediately
+- Keep non-price messages short: 1-2 sentences + the question`;
+
+function coachGetHistory() {
+  try { return JSON.parse(localStorage.getItem(COACH_STORAGE) || '[]'); } catch { return []; }
+}
+function coachSaveHistory(msgs) { localStorage.setItem(COACH_STORAGE, JSON.stringify(msgs)); }
+
+function coachRenderThread() {
+  const thread = document.getElementById('coachThread');
+  if (!thread) return;
+  const msgs = coachGetHistory();
+  if (!msgs.length) {
+    thread.innerHTML = `<div class="coach-msg assistant">
+      <div class="coach-avatar">🔧</div>
+      <div class="coach-bubble">Hey — I'm your RepairPro coach. Tell me what's going on with your vehicle and I'll ask a few quick questions, then give you a solid price range for the fix.</div>
+    </div>`;
+    return;
+  }
+  thread.innerHTML = msgs.map(m => `
+    <div class="coach-msg ${m.role}">
+      ${m.role === 'assistant' ? '<div class="coach-avatar">🔧</div>' : '<div class="coach-avatar">👤</div>'}
+      <div class="coach-bubble">${esc(m.content).replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')}</div>
+    </div>
+  `).join('');
+  thread.scrollTop = thread.scrollHeight;
+}
+
+async function coachSend() {
+  const input = document.getElementById('coachInput');
+  const sendBtn = document.getElementById('coachSendBtn');
+  const thread = document.getElementById('coachThread');
+  const text = input?.value.trim();
+  if (!text) return;
+
+  const apiKey = appSettings.apiKey || localStorage.getItem('ariq_apikey') || '';
+  if (!apiKey) {
+    // demo nudge — still add user message then fake reply
+    const msgs = coachGetHistory();
+    msgs.push({ role: 'user', content: text });
+    coachSaveHistory(msgs);
+    if (input) input.value = '';
+    coachRenderThread();
+    // short demo reply
+    setTimeout(() => {
+      const dm = coachGetHistory();
+      dm.push({ role: 'assistant', content: 'Add your Claude API key in Settings to activate the live coach. In demo mode I can\'t diagnose or price — but your real estimate tool is available in the Estimate tab.' });
+      coachSaveHistory(dm);
+      coachRenderThread();
+    }, 600);
+    return;
+  }
+
+  const msgs = coachGetHistory();
+  msgs.push({ role: 'user', content: text });
+  coachSaveHistory(msgs);
+  if (input) input.value = '';
+  coachRenderThread();
+
+  // typing indicator
+  const typingId = 'coachTyping_' + Date.now();
+  if (thread) {
+    thread.insertAdjacentHTML('beforeend', `
+      <div class="coach-msg assistant" id="${typingId}">
+        <div class="coach-avatar">🔧</div>
+        <div class="coach-bubble"><div class="coach-typing"><span></span><span></span><span></span></div></div>
+      </div>`);
+    thread.scrollTop = thread.scrollHeight;
+  }
+  if (sendBtn) sendBtn.disabled = true;
+  if (input) input.disabled = true;
+
+  try {
+    const apiMsgs = msgs.slice(-16).map(m => ({ role: m.role, content: m.content }));
+    const res = await ClaudeAPI.call(apiKey, {
+      model: 'claude-sonnet-4-6',
+      max_tokens: 600,
+      system: COACH_SYSTEM,
+      messages: apiMsgs,
+    });
+    const reply = res.content?.[0]?.text || 'Something went wrong — try again.';
+    document.getElementById(typingId)?.remove();
+    msgs.push({ role: 'assistant', content: reply });
+    coachSaveHistory(msgs);
+    coachRenderThread();
+  } catch (err) {
+    document.getElementById(typingId)?.remove();
+    const errMsg = err.status === 401
+      ? 'Invalid API key — check Settings.'
+      : err.circuitOpen
+        ? 'Too many errors — wait a minute.'
+        : `Coach error: ${err.message}`;
+    msgs.push({ role: 'assistant', content: errMsg });
+    coachSaveHistory(msgs);
+    coachRenderThread();
+  } finally {
+    if (sendBtn) sendBtn.disabled = false;
+    if (input) { input.disabled = false; input.focus(); }
+  }
+}
+
+function coachReset() {
+  if (!confirm('Start a new diagnostic session?')) return;
+  localStorage.removeItem(COACH_STORAGE);
+  coachRenderThread();
+}
+
+// Wire Enter key for coach input
+document.addEventListener('DOMContentLoaded', () => {
+  const inp = document.getElementById('coachInput');
+  inp?.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); coachSend(); } });
+  coachRenderThread();
+});
