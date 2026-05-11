@@ -1,5 +1,12 @@
 # RepairPro
 
+## Download Links
+
+- **iOS / iPhone:** Open the PWA in Safari: [RepairPro iOS install](https://808cadger.github.io/repairpro/) and choose **Share -> Add to Home Screen**.
+- **Android:** Download the latest APK from GitHub Releases: [RepairPro Android releases](https://github.com/808cadger/repairpro/releases/latest).
+- **Source download:** [Download the GitHub source ZIP](https://github.com/808cadger/repairpro/archive/refs/heads/main.zip).
+
+
 <!-- INSTALL-START -->
 ## Install and run
 
