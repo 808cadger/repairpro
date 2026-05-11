@@ -1,10 +1,35 @@
 # RepairPro
 
+[![Release](https://img.shields.io/github/v/release/808cadger/repairpro?include_prereleases&label=release)](https://github.com/808cadger/repairpro/releases)
+[![Last commit](https://img.shields.io/github/last-commit/808cadger/repairpro)](https://github.com/808cadger/repairpro/commits)
+[![License](https://img.shields.io/github/license/808cadger/repairpro)](https://github.com/808cadger/repairpro/blob/HEAD/LICENSE)
+![Platforms](https://img.shields.io/badge/platform-Web%2FPWA%2C%20Android%2C%20Desktop%2C%20API%20service-2563eb)
+
+AI auto-repair suite combining damage scans, VIN decode, part identification, estimates, and shop operations.
+
+## Project Snapshot
+
+| Area | Details |
+|------|---------|
+| Primary use case | AI auto-repair suite combining damage scans, VIN decode, part identification, estimates, and shop operations. |
+| Platforms | Web/PWA, Android, Desktop, API service |
+| Core stack | JavaScript, Capacitor, Android, Electron, FastAPI, Claude AI |
+| Review first | `www/index.html`, `backend`, `android`, `capacitor.config.json`, `package.json` |
+
 ## Download Links
 
-- **iOS / iPhone:** Open the PWA in Safari: [RepairPro iOS install](https://808cadger.github.io/repairpro/) and choose **Share -> Add to Home Screen**.
-- **Android:** Download the latest APK from GitHub Releases: [RepairPro Android releases](https://github.com/808cadger/repairpro/releases/latest).
-- **Source download:** [Download the GitHub source ZIP](https://github.com/808cadger/repairpro/archive/refs/heads/main.zip).
+| Platform | Link |
+|----------|------|
+| iOS / iPhone | [Open the PWA in Safari](https://808cadger.github.io/repairpro/) and choose **Share -> Add to Home Screen** |
+| Android | [Download the latest APK from GitHub Releases](https://github.com/808cadger/repairpro/releases/latest) |
+| Source | [Download the GitHub source ZIP](https://github.com/808cadger/repairpro/archive/refs/heads/main.zip) |
+| Repository | [View on GitHub](https://github.com/808cadger/repairpro) |
+
+## Why This Repo Is Worth Reviewing
+
+- Merges scan, parts, pricing, and decision support into one workflow.
+- Backend and frontend boundaries make the architecture easy to review.
+- Multi-platform packaging demonstrates production delivery discipline.
 
 
 <!-- INSTALL-START -->
